@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Caissier</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{% static 'EasyMarketProducts/assets/css/style.css' %}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid d-flex justify-content-end">
+            <div class="d-flex ms-auto">
+                <a href="#" class="nav-link">
+                    <img src="{% static 'EasyMarketProducts/assets/icônes/gestion-du-temps.png' %}" alt="Historique">
+                    <span class="nav-text">Historique des commandes</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <img src="{% static 'EasyMarketProducts/assets/icônes/se-deconnecter.png' %}" alt="Déconnexion">
+                    <span class="nav-text">Se déconnecter</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="d-flex justify-content-center">
+        <h1>Facturier</h1>
+    </div>
+
+    <div class="container d-flex justify-content-center mt-8">
+        <div class="col-md-10 p-4 shadow rounded bg-light">
+            <form action="" method="post">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Réf</th>
+                            <th scope="col">Désignation</th>
+                            <th scope="col">Qté</th>
+                            <th scope="col">PU TTC</th>
+                            <th scope="col">Montant TTC</th>
+                        </tr>
+                    </thead>
+                    <tbody id="produits-liste">
+                        {% for produit in produits %}
+                        <tr id="product-{{ produit.id }}">
+                            <th scope="row">{{ produit.id }}</th>
+                            <td>{{ produit.name }}</td>
+                            <td><input type="number" name="nbproduit" class="quantite" min="1" value="1" data-price="{{ produit.price }}"></td>
+                            <td class="pu-ttc">{{ produit.price }}</td>
+                            <td class="montant-ttc">{{ produit.price }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                            <th scope="row"></th>
+                            <td colspan="2"></td>
+                            <td><strong>Net à payer:</strong></td>
+                            <td id="net-a-payer"><strong>0</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-warning btn-lg me-5">Enregistrer la commande</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8000/ws/socket-server/');
+
+        ws.onopen = function() {
+            console.log('Connexion WebSocket établie');
+        };
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.product) {
+                const product = data.product;
+                const tbody = $('#produits-liste');
+                const row = `
+                    <tr id="product-${product.id}">
+                        <th scope="row">${product.id}</th>
+                        <td>${product.name}</td>
+                        <td><input type="number" name="nbproduit" class="quantite" min="1" value="1" data-price="${product.price}"></td>
+                        <td class="pu-ttc">${product.price}</td>
+                        <td class="montant-ttc">${product.price}</td>
+                    </tr>
+                `;
+                // Vérifier si le produit n'est pas déjà dans le tableau
+                if (!$(`#product-${product.id}`).length) {
+                    tbody.find('tr:last').before(row);
+                }
+                updateTotal();
+            } else if (data.error) {
+                console.error(data.error);
+                alert(data.error);
+            }
+        };
+
+        ws.onclose = function() {
+            console.log('Connexion WebSocket fermée');
+        };
+
+        function updateTotal() {
+            let total = 0;
+            $('.montant-ttc').each(function() {
+                total += parseFloat($(this).text());
+            });
+            $('#net-a-payer strong').text(total.toFixed(2) + "€");
+        }
+
+        // Mettre à jour le montant TTC lorsqu'on change la quantité
+        $(document).on('input', '.quantite', function() {
+            const $row = $(this).closest('tr');
+            const quantite = parseInt($(this).val());
+            const price = parseFloat($(this).data('price'));
+            const montantTTC = quantite * price;
+            $row.find('.montant-ttc').text(montantTTC.toFixed(2));
+            updateTotal();
+        });
+    </script>
+    <script src="{% static 'EasyMarketProducts/assets/js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

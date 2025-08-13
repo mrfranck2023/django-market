@@ -1,0 +1,21 @@
+.nav-item {
+    text-align: center;
+    flex-grow: 1;
+}
+.nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    color: #333;
+}
+.nav-link:hover {
+    color: #007bff;
+}
+.nav-link img {
+    width: 24px;  /* Taille de l'icône */
+    height: 24px;
+}
+.nav-text {
+    font-size: 12px;
+}

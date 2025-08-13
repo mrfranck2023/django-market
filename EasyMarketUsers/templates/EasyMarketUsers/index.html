@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    {% if user.is_authenticated %}
+        <p>Connecté sous {{ user.username }} | <a href="{% url 'EasyMarketUsers:logout' %}"> Déconnexion </a></p>
+    {% else %}
+    <p><a href="{% url 'EasyMarketUsers:login' %}"> Connexion </a></p>
+    <p><a href="{% url 'EasyMarketUsers:register' %}"> Inscription </a></p>
+    {% endif %}
+</body>
+</html>
