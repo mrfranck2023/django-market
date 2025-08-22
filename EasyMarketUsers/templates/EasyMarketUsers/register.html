@@ -18,6 +18,8 @@
   
   <link rel="stylesheet" href="{% static 'EasyMarketUsers/css/style.css' %}">
 
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 
 </head>
 
@@ -57,12 +59,17 @@
                     </div>
 
                     <div class="col-12">
-                        <select class="form-select" name="statut" required>
+                        <select class="form-select" name="statut" id="statut" required>
                             <option selected>Quel est votre statut</option>
                             <option value="admin">Admin</option>
                             <option value="gestionnaire">Gestionnaire</option>
                             <option value="caissier">Caissier</option>
                           </select>
+                    </div>
+                    
+                    <div id="nb_caisse" class="mb-3" style="display: none;">
+                      <label for="card_number" class="form-label">Nombre de caisse</label>
+                      <input type="number" name="caisse_numbers" id="caisse_numbers" class="form-control" placeholder="1 ou 2 ou 3 et cetera">
                     </div>
 
                     <div class="col-12">
@@ -111,6 +118,18 @@
 
 
   <!-- <script src="assets/js/main.js"></script> -->
+  <script>
+        $(document).ready(function() {
+            $('#statut').on('change', function() {
+                const selectedValue = $(this).val();
+                if (selectedValue === 'gestionnaire') {
+                    $('#nb_caisse').show();
+                } else {
+                    $('#nb_caisse').hide();
+                }
+            });
+        });
+  </script>
 
 </body>
 
