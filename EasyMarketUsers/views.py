@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from .models import Caisse
+from django.contrib.auth.decorators import login_required
 
 User = get_user_model()
 
@@ -61,13 +62,14 @@ def check_user(request):
     except Caisse.DoesNotExist:
         return JsonResponse({"etat": "inexistante", "message": f"Le numero {numero} n'existe pas"})
     
-
+@login_required
 def logout_user(request):
+    request.session.flush()  # Effacer la session, y compris scanned_barcodes
     logout(request)
-    return redirect("EasyMarketUsers:index") 
+    return redirect("EasyMarketUsers:login") 
     # lorsque tu créera une autre application et tu lui octroira un nom nom tu fera une redirection telle que celle ci     return redirect("nomapplication:index") 
  
-
+    
 # def register_user(request):
 #     if request.method == "POST":
 #         form = InscriptionForm(request.POST)

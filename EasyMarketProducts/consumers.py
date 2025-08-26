@@ -4,11 +4,24 @@ from asgiref.sync import sync_to_async
 
 class BarcodeConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        await self.channel_layer.group_add('barcode_group', self.channel_name)
+        # await self.channel_layer.group_add('barcode_group', self.channel_name)
+        # await self.accept()
+
+        # Groupe unique par utilisateur (ex: barcode_group_1 pour l'utilisateur avec ID 1)
+        self.user = self.scope["user"]
+        if self.user.is_anonymous:
+            await self.close()
+            return
+        self.group_name = f"barcode_group_{self.user.id}"
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
+    # async def disconnect(self, close_code):
+    #     # await self.channel_layer.group_discard('barcode_group', self.channel_name)
+    #     await self.channel_layer.group_discard(self.group_name, self.channel_name)
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard('barcode_group', self.channel_name)
+        if hasattr(self, 'group_name') and self.group_name:
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data):
         from .models import Product  # Importer ici pour éviter l'initialisation prématurée
@@ -36,7 +49,7 @@ class BarcodeConsumer(AsyncWebsocketConsumer):
                 'barcode': product.barcode,
             }
             await self.channel_layer.group_send(
-                'barcode_group',
+                self.group_name, #ici on met le nom du groupe ouvert
                 {
                     'type': 'product_message',
                     'product': product_data

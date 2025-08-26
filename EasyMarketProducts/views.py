@@ -1,5 +1,6 @@
 from django.shortcuts import render, HttpResponse
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 from .models import Product
 import cv2
 from pyzbar.pyzbar import decode
@@ -13,25 +14,34 @@ import json
 # Initialize pygame mixer
 pygame.mixer.init()
 sound_file_path = os.path.join(os.path.dirname(__file__), 'be.wav')
-scanned_barcodes = []
+
+# Dictionnaire pour suivre l'état du scan par utilisateur
+scanning_active_by_user = {}
+lock = threading.Lock()  # Verrou pour protéger l'accès au dictionnaire
 
 def play_sound():
     pygame.mixer.music.load(sound_file_path)
     pygame.mixer.music.play()
 
-scanning_active = True
-
-def barcode_scanner():
-    global scanning_active
+def barcode_scanner(request):
     channel_layer = get_channel_layer()
+    user_id = request.user.id
+    scanned_barcodes = request.session.get('scanned_barcodes', [])
+    print(f"Début du scan pour l'utilisateur {user_id}")
 
     cap = cv2.VideoCapture(0)
-
     if not cap.isOpened():
         print("Erreur : Impossible d'ouvrir la webcam")
         return
 
-    while cap.isOpened() and scanning_active:
+    with lock:
+        scanning_active_by_user[user_id] = True  # Initialiser l'état pour cet utilisateur
+
+    while cap.isOpened():
+        with lock:
+            if not scanning_active_by_user.get(user_id, False):
+                break  # Arrêter si scanning_active_by_user[user_id] est False
+
         success, frame = cap.read()
         if not success:
             print("Erreur : Impossible de lire le flux vidéo")
@@ -51,34 +61,50 @@ def barcode_scanner():
                     cv2.putText(frame, barcode_data, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 255), 2)
                     print(f"Code-barres détecté : {barcode_data}")
                     scanned_barcodes.append(barcode_data)
-                    play_sound()
+                    request.session['scanned_barcodes'] = scanned_barcodes
+                    request.session.modified = True
                     async_to_sync(channel_layer.group_send)(
-                        'barcode_group',
+                        f"barcode_group_{user_id}",
                         {
                             'type': 'receive',
                             'barcode': barcode_data
                         }
                     )
+                    play_sound()
 
         cv2.imshow("scanner", frame)
         if cv2.waitKey(1) == ord("q"):
+            with lock:
+                scanning_active_by_user[user_id] = False
             break
 
     cap.release()
     cv2.destroyAllWindows()
+    with lock:
+        scanning_active_by_user.pop(user_id, None)  # Nettoyer après arrêt
 
+@login_required
 def scan_view(request):
-    global scanning_active
-    scanning_active = True
-    scanning_thread = threading.Thread(target=barcode_scanner)
+    if not request.user.is_authenticated:
+        return HttpResponse("Vous devez être connecté pour scanner.")
+    request.session['scanned_barcodes'] = request.session.get('scanned_barcodes', [])
+    request.session.modified = True
+    scanning_thread = threading.Thread(target=barcode_scanner, args=(request,))
     scanning_thread.start()
     return HttpResponse("Barcode scanning started. Visit '/stop-scan/' to stop scanning.")
 
+@login_required
 def stop_scan(request):
-    global scanning_active
-    scanning_active = False
+    user_id = request.user.id
+    with lock:
+        scanning_active_by_user[user_id] = False  # Arrêter le scan pour cet utilisateur
     return HttpResponse("Barcode scanning stopped.")
 
+@login_required
 def show_caissier(request):
+    scanned_barcodes = request.session.get('scanned_barcodes', [])
     products = Product.objects.filter(barcode__in=scanned_barcodes)
     return render(request, "EasyMarketProducts/caissier_index.html", {"produits": products})
+
+
+# dans ce code on utilise les session pour scanner et garder pour chaque utilisateur les produits qu'ili a scanné dans sa propre session

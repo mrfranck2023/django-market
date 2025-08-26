@@ -1,4 +1,5 @@
 from pathlib import Path
+from django.urls import reverse_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -132,3 +133,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 AUTH_USER_MODEL = "EasyMarketUsers.Utilisateurs"
+
+
+LOGIN_URL = reverse_lazy('EasyMarketUsers:login') #le decorateur @login_required redirigera l'uttilisateur vers cette page s'il n'est pas connecter et souhaite acceder a la vue protegee par ce decoragteur
