@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-5">
+  <h2>🗑️ Supprimer le produit</h2>
+  <p>
+    Es-tu sûr de vouloir supprimer le produit :
+    <strong>{{ product.name }}</strong> ({{ product.barcode }}) ?
+  </p>
+
+  <form id="deleteProductForm" method="POST">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Oui, supprimer</button>
+    <a href="{% url 'EasyMarketProducts:dashboard_gestionnaire' %}" class="btn btn-secondary">Annuler</a>
+  </form>
+</div>
+
+{% endblock %}

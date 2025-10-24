@@ -18,10 +18,16 @@ def login_user(request):
         user = authenticate(request, username = username, password = password)
         if user is not None:
             login(request, user)
-            return redirect("EasyMarketUsers:index")
+            # Vérification du rôle
+            if user.statut == "gestionnaire":
+                return redirect("EasyMarketProducts:dashboard_gestionnaire")  # page gestionnaire
+            elif user.statut == "caissier":
+                return redirect("EasyMarketProducts:caissier")  # page caissier
+            else:
+                messages.error(request, "Votre rôle n'est pas reconnu.")
+                return redirect("EasyMarketUsers:login")
         else:
             messages.error(request, "Nom d'utilisateur ou mot de passe incorrect")
-
         
     gestionnaire = User.objects.get(statut = "gestionnaire")
     donnee = {

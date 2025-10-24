@@ -71,7 +71,7 @@
                     
                     <div class="col-12" style="display: none;" id="choose_caisse">
                       <label for="caisse_select">Choisissez votre caisse :</label>
-                      <select class="form-select" name="caisse_select" id="caisse_select" required>
+                      <select class="form-select" name="caisse_select" id="caisse_select">
                         <option value="">-- Sélectionner --</option>
                         {% if donnee.caisse_range %}
                           {% for i in donnee.caisse_range %}
@@ -141,8 +141,10 @@
               .then(data => {
                 if (data.is_caissier) {
                     $('#choose_caisse').show();
+                    $('#caisse_select').attr('required', true);
                 } else {
                     $('#choose_caisse').hide();
+                    $('#caisse_select').attr('required', false);
                 }
               });
 

@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    Bienvenue {{ user.username }} 
+
+<button id="addProductBtn" class="btn btn-success">+ Ajouter un produit</button>
+
+<!-- ✅ Modale Bootstrap -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Ajouter un produit</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="addProductModalBody">
+        <!-- le formulaire sera chargé ici en AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<table border="1">
+  <tr>
+    <th>Nom Produit</th>
+    <th>Code-barres</th>
+    <th>Prix</th>
+    <th>Stock</th>
+    <th>Actions</th>
+  </tr>
+  {% for p in products %}
+  <tr>
+    <td>{{ p.name }}</td>
+    <td>{{ p.barcode }}</td>
+    <td>{{ p.price }}</td>
+    <td>{{ p.stock }}</td>
+    <td>
+
+      <button class="btn btn-sm btn-warning updateProductBtn" data-id="{{ p.id }}">Modifier</button>
+      <button class="btn btn-danger deleteProductBtn" data-id="{{ p.id }}">Supprimer</button>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
+
+
+
+
+{% block scripts %}
+<script>
+// $(document).ready(function() {
+//   // Quand on clique sur le bouton
+//   $('#addProductBtn').click(function() {
+//     // Charger le formulaire dans la modale
+//     $('#addProductModalBody').load("{% url 'EasyMarketProducts:add_product' %}", function() {
+//       // Afficher la modale une fois le HTML chargé
+//       $('#addProductModal').modal('show');
+//     });
+//   });
+
+//   // Gérer la soumission du formulaire (via délégation)
+//   $(document).on('submit', '#addProductForm', function(e) {
+//     e.preventDefault();
+
+//     $.ajax({
+//       type: 'POST',
+//       url: "{% url 'EasyMarketProducts:add_product' %}",
+//       data: $(this).serialize(),
+//       success: function(response) {
+//         if (response.success) {
+//           $('#addProductModal').modal('hide');
+//           alert('Produit ajouté avec succès !');
+//           // tu pourrais aussi rafraîchir la liste sans recharger la page ici
+//         } else {
+//           $('#addProductModalBody').html(response.errors);
+//         }
+//       }
+//     });
+//   });
+
+//     // Quand on clique sur le bouton modifier
+//   $('.updateProductBtn').click(function() {
+//     // Charger le formulaire dans la modale
+//     currentId = $(this).data('id');
+//     const url = `/easyMarketProducts/produits/${currentId}/modifier/`;
+
+//     $('#addProductModalBody').load(url, function() {
+//       // Afficher la modale une fois le HTML chargé
+//       $('#addProductModal').modal('show');
+//     });
+//   });
+
+//   $(document).on('submit', '#addProductForm', function(e) {
+//     e.preventDefault();
+
+//     $.ajax({
+//       type: 'POST',
+//       url:  `/easyMarketProducts/produits/${currentId}/modifier/`,
+//       data: $(this).serialize(),
+//       success: function(response) {
+//         if (response.success) {
+//           $('#addProductModal').modal('hide');
+//           alert('Produit modifié avec succès !');
+//           // tu pourrais aussi rafraîchir la liste sans recharger la page ici
+//         } else {
+//           $('#addProductModalBody').html(response.errors);
+//         }
+//       }
+//     });
+//   });
+
+//   //quand on clique sur le bouton supprimer
+//   $('.deleteProductBtn').click(function() {
+//     // Charger le formulaire dans la modale
+//     currentId = $(this).data('id');
+//     const url = `/easyMarketProducts/produits/${currentId}/supprimer/`;
+
+//     $('#addProductModalBody').load(url, function() {
+//       // Afficher la modale une fois le HTML chargé
+//       $('#addProductModal').modal('show');
+//     });
+//   });
+
+//   $(document).on('submit', '#deleteProductForm', function(e) {
+//     e.preventDefault();
+
+//     $.ajax({
+//       type: 'POST',
+//       url:  `/easyMarketProducts/produits/${currentId}/supprimer/`,
+//       data: $(this).serialize(),
+//       success: function(response) {
+//         if (response.success) {
+//           $('#addProductModal').modal('hide');
+//           alert('Produit supprimé avec succès !');
+//           // tu pourrais aussi rafraîchir la liste sans recharger la page ici
+//         } else {
+//           $('#addProductModalBody').html(response.errors);
+//         }
+//       }
+//     });
+//   });
+  
+// });
+
+$(document).ready(function() {
+  let currentId = null;
+  let currentAction = null;
+
+  // --- 1️⃣ Ajouter un produit ---
+  $(document).on('click', '#addProductBtn', function() {
+    currentAction = 'add';
+    $('#addProductModalBody').load("{% url 'EasyMarketProducts:add_product' %}", function() {
+      $('#addProductModal').modal('show');
+    });
+  });
+
+  // --- 2️⃣ Modifier un produit ---
+  $(document).on('click', '.updateProductBtn', function() {
+    currentAction = 'update';
+    currentId = $(this).data('id');
+    const url = `/easyMarketProducts/produits/${currentId}/modifier/`;
+
+    $('#addProductModalBody').load(url, function() {
+      $('#addProductModal').modal('show');
+    });
+  });
+
+  // --- 3️⃣ Supprimer un produit ---
+  $(document).on('click', '.deleteProductBtn', function() {
+    currentAction = 'delete';
+    currentId = $(this).data('id');
+    const url = `/easyMarketProducts/produits/${currentId}/supprimer/`;
+
+    $('#addProductModalBody').load(url, function() {
+      $('#addProductModal').modal('show');
+    });
+  });
+
+  // --- 💾 Gérer la soumission de TOUTES les modales ---
+  $(document).on('submit', 'form', function(e) {
+    e.preventDefault();
+
+    let url;
+    if (currentAction === 'add') {
+      url = "{% url 'EasyMarketProducts:add_product' %}";
+    } else if (currentAction === 'update') {
+      url = `/easyMarketProducts/produits/${currentId}/modifier/`;
+    } else if (currentAction === 'delete') {
+      url = `/easyMarketProducts/produits/${currentId}/supprimer/`;
+    } else {
+      console.error("Action inconnue !");
+      return;
+    }
+
+    $.ajax({
+      type: 'POST',
+      url: url,
+      data: $(this).serialize(),
+      success: function(response) {
+        if (response.success) {
+          $('#addProductModal').modal('hide');
+
+          alert(
+            currentAction === 'add' ? 'Produit ajouté avec succès !' :
+            currentAction === 'update' ? 'Produit modifié avec succès !' :
+            'Produit supprimé avec succès !'
+          );
+
+          // Exemple : recharger le tableau sans refresh complet
+          // $('#productTable').load(window.location.href + " #productTable");
+
+        } else {
+          $('#addProductModalBody').html(response.errors);
+        }
+      },
+      error: function() {
+        alert("Une erreur est survenue pendant l'opération.");
+      }
+    });
+  });
+});
+
+</script>
+{% endblock %}
+    

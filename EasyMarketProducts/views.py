@@ -1,6 +1,7 @@
-from django.shortcuts import render, HttpResponse
+from django.shortcuts import render, HttpResponse, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from .forms import ProductForm
 from .models import Product
 import cv2
 from pyzbar.pyzbar import decode
@@ -11,6 +12,8 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import json
 
+
+#------------------------------------- implémentation du scan de QR code ------------------------------------------------------
 # Initialize pygame mixer
 pygame.mixer.init()
 sound_file_path = os.path.join(os.path.dirname(__file__), 'be.wav')
@@ -100,6 +103,11 @@ def stop_scan(request):
         scanning_active_by_user[user_id] = False  # Arrêter le scan pour cet utilisateur
     return HttpResponse("Barcode scanning stopped.")
 
+
+#------------------------------------- implémentation du scan de QR code ------------------------------------------------------
+
+
+
 @login_required
 def show_caissier(request):
     scanned_barcodes = request.session.get('scanned_barcodes', [])
@@ -108,3 +116,54 @@ def show_caissier(request):
 
 
 # dans ce code on utilise les session pour scanner et garder pour chaque utilisateur les produits qu'ili a scanné dans sa propre session
+
+
+
+
+
+def add_product(request):
+    if request.method == "POST":
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            product = form.save()
+            return JsonResponse({
+                "success": True,
+                "product": {
+                    "id": product.id,
+                    "name": product.name,
+                    "price": str(product.price),
+                    "stock": product.stock,
+                }
+            })
+        else:
+            return JsonResponse({"success": False, "errors": form.errors})
+    else:
+        form = ProductForm()
+        return render(request, "EasyMarketProducts/add_product_form.html", {"form": form})
+
+
+
+def product_update(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    form = ProductForm(request.POST or None, instance=product)
+    if form.is_valid():
+        form.save()
+        return JsonResponse({'success': True})
+    return render(request, "EasyMarketProducts/add_product_form.html", {"form": form})
+
+def product_delete(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    if request.method == "POST":
+        product.delete()
+        return JsonResponse({'success': True})
+    return render(request, "EasyMarketProducts/delete.html", {"product": product})
+
+
+
+
+
+
+@login_required
+def show_dashboard_gestionnaire(request):
+    products = Product.objects.all()
+    return render(request, "EasyMarketProducts/gestionnaire_index.html", {"products": products})
