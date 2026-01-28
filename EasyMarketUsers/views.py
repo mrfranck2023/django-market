@@ -58,11 +58,15 @@ def check_user(request):
     code_gestionnaire = "321"
     code_caissier = "12345"
     if not numero:
-        return JsonResponse({"etat": None, "message": ""})
+        return JsonResponse({"etat": None, "message": "Le code que vous venez d'entrer est invalide"})
 
     try:
-        if code_caissier == numero:
+        if numero == code_caissier:
             return JsonResponse({"etat": "", "is_caissier": True})
+        elif numero == code_admin:
+            return JsonResponse({"etat": "", "is_admin": True})
+        elif numero == code_gestionnaire:
+            return JsonResponse({"etat": "", "is_gestionnaire": True})
         else:
             return JsonResponse({"etat": "", "is_caissier": False})
     except Caisse.DoesNotExist:

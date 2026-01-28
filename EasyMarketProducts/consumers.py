@@ -1,6 +1,7 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 from asgiref.sync import sync_to_async
+from .models import Product
 
 class BarcodeConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -48,6 +49,7 @@ class BarcodeConsumer(AsyncWebsocketConsumer):
                 'price': float(product.price),
                 'barcode': product.barcode,
             }
+            
             await self.channel_layer.group_send(
                 self.group_name, #ici on met le nom du groupe ouvert
                 {
@@ -61,7 +63,26 @@ class BarcodeConsumer(AsyncWebsocketConsumer):
             }))
 
     async def product_message(self, event):
-        product = event['product']
-        await self.send(text_data=json.dumps({
-            'product': product
-        }))
+
+        barcode = event['barcode']
+        print("Consumer reçoit barcode waiiiip:", barcode)
+
+        try:
+            product = await sync_to_async(Product.objects.get)(barcode=barcode)
+            print("Produit trouvé oh waiiiip:", product.name)
+
+            product_data = {
+                'id': product.id,
+                'name': product.name,
+                'price': float(product.price),
+                'barcode': product.barcode
+            }
+
+            await self.send(text_data=json.dumps({
+                'product': product_data
+            }))
+
+        except Product.DoesNotExist:
+            await self.send(text_data=json.dumps({
+                'error': f'Produit {barcode} introuvable'
+            }))

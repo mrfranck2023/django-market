@@ -11,6 +11,7 @@ import os
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import json
+import time
 
 
 #------------------------------------- implémentation du scan de QR code ------------------------------------------------------
@@ -20,6 +21,7 @@ sound_file_path = os.path.join(os.path.dirname(__file__), 'be.wav')
 
 # Dictionnaire pour suivre l'état du scan par utilisateur
 scanning_active_by_user = {}
+last_scan_time_by_user = {}
 lock = threading.Lock()  # Verrou pour protéger l'accès au dictionnaire
 
 def play_sound():
@@ -60,20 +62,29 @@ def barcode_scanner(request):
         else:
             for barcode in detectedBarcode:
                 barcode_data = str(barcode.data.decode('utf-8'))
-                if barcode_data and barcode_data not in scanned_barcodes:
+                if barcode_data:
                     cv2.putText(frame, barcode_data, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 255), 2)
                     print(f"Code-barres détecté : {barcode_data}")
                     scanned_barcodes.append(barcode_data)
                     request.session['scanned_barcodes'] = scanned_barcodes
                     request.session.modified = True
-                    async_to_sync(channel_layer.group_send)(
-                        f"barcode_group_{user_id}",
-                        {
-                            'type': 'receive',
-                            'barcode': barcode_data
-                        }
-                    )
-                    play_sound()
+                    now = time.time()
+                    last_time = last_scan_time_by_user.get(user_id, 0)
+
+                    if now - last_time > 5:   # 1 seconde entre scans
+                        print("ouiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
+                        valeur = now - last_time
+                        print(last_time)
+                        print(valeur)
+                        last_scan_time_by_user[user_id] = now
+                        async_to_sync(channel_layer.group_send)(
+                            f"barcode_group_{user_id}",
+                            {
+                                'type': 'product_message',
+                                'barcode': barcode_data
+                            }
+                        )
+                        play_sound()
 
         cv2.imshow("scanner", frame)
         if cv2.waitKey(1) == ord("q"):
@@ -88,13 +99,22 @@ def barcode_scanner(request):
 
 @login_required
 def scan_view(request):
-    if not request.user.is_authenticated:
-        return HttpResponse("Vous devez être connecté pour scanner.")
-    request.session['scanned_barcodes'] = request.session.get('scanned_barcodes', [])
-    request.session.modified = True
-    scanning_thread = threading.Thread(target=barcode_scanner, args=(request,))
+
+    user_id = request.user.id
+
+    # IMPORTANT : réactiver le scan pour cet utilisateur
+    with lock:
+        scanning_active_by_user[user_id] = True
+
+    scanning_thread = threading.Thread(
+        target=barcode_scanner,
+        args=(request,),
+        daemon=True   # évite les bugs au redémarrage
+    )
+
     scanning_thread.start()
-    return HttpResponse("Barcode scanning started. Visit '/stop-scan/' to stop scanning.")
+
+    return HttpResponse("Scan démarré")
 
 @login_required
 def stop_scan(request):

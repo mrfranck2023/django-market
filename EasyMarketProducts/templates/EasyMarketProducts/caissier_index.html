@@ -10,8 +10,12 @@
     <link rel="stylesheet" href="{% static 'EasyMarketProducts/assets/css/style.css' %}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-<body>
-    Connecté sous {{ user.username }} 
+<body> 
+    {% if user.is_authenticated %}
+        <p>Connecté sous {{ user.username }} | <a href="{% url 'EasyMarketUsers:logout' %}"> Déconnexion </a></p>
+    {% else %}
+
+    {% endif %}
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid d-flex justify-content-end">
             <div class="d-flex ms-auto">
@@ -45,6 +49,16 @@
                         </tr>
                     </thead>
                     <tbody id="produits-liste">
+                        <tr id="template-produit" class="d-none">
+                            <td><input type="text" name="ref[]" class="form-control" placeholder="Réf"></td>
+                            <td><input type="text" name="designation[]" class="form-control" placeholder="Désignation"></td>
+                            <td><input type="number" name="quantite[]" class="form-control quantite" min="1" value="1"></td>
+                            <td><input type="number" name="prix[]" class="form-control prix" min="0" step="0.01" value="0"></td>
+                            <td class="montant-ttc">0</td>
+                            <td>
+                                <button type="button" class="btn btn-danger btn-sm remove-btn">🗑️</button>
+                            </td>
+                        </tr>
                         {% for produit in produits %}
                         <tr id="product-{{ produit.id }}">
                             <th scope="row">{{ produit.id }}</th>
@@ -54,75 +68,22 @@
                             <td class="montant-ttc">{{ produit.price }}</td>
                         </tr>
                         {% endfor %}
-                        <tr>
-                            <th scope="row"></th>
-                            <td colspan="2"></td>
-                            <td><strong>Net à payer:</strong></td>
-                            <td id="net-a-payer"><strong>0</strong></td>
-                        </tr>
                     </tbody>
+                    <tr>
+                        <th scope="row"></th>
+                        <td colspan="2"></td>
+                        <td><strong>Net à payer:</strong></td>
+                        <td id="net-a-payer"><strong>0</strong></td>
+                    </tr>
                 </table>
-                <div class="d-flex justify-content-end">
+                <div class="d-flex justify-content-between">
+                    <button type="button" id="add-product" class="btn btn-success btn-lg">+ Ajouter un produit</button>
                     <button type="submit" class="btn btn-warning btn-lg me-5">Enregistrer la commande</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script>
-        const ws = new WebSocket('ws://localhost:8000/ws/socket-server/');
-
-        ws.onopen = function() {
-            console.log('Connexion WebSocket établie');
-        };
-
-        ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            if (data.product) {
-                const product = data.product;
-                const tbody = $('#produits-liste');
-                const row = `
-                    <tr id="product-${product.id}">
-                        <th scope="row">${product.id}</th>
-                        <td>${product.name}</td>
-                        <td><input type="number" name="nbproduit" class="quantite" min="1" value="1" data-price="${product.price}"></td>
-                        <td class="pu-ttc">${product.price}</td>
-                        <td class="montant-ttc">${product.price}</td>
-                    </tr>
-                `;
-                // Vérifier si le produit n'est pas déjà dans le tableau
-                if (!$(`#product-${product.id}`).length) {
-                    tbody.find('tr:last').before(row);
-                }
-                updateTotal();
-            } else if (data.error) {
-                console.error(data.error);
-                alert(data.error);
-            }
-        };
-
-        ws.onclose = function() {
-            console.log('Connexion WebSocket fermée');
-        };
-
-        function updateTotal() {
-            let total = 0;
-            $('.montant-ttc').each(function() {
-                total += parseFloat($(this).text());
-            });
-            $('#net-a-payer strong').text(total.toFixed(2) + "€");
-        }
-
-        // Mettre à jour le montant TTC lorsqu'on change la quantité
-        $(document).on('input', '.quantite', function() {
-            const $row = $(this).closest('tr');
-            const quantite = parseInt($(this).val());
-            const price = parseFloat($(this).data('price'));
-            const montantTTC = quantite * price;
-            $row.find('.montant-ttc').text(montantTTC.toFixed(2));
-            updateTotal();
-        });
-    </script>
     <script src="{% static 'EasyMarketProducts/assets/js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

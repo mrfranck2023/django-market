@@ -1,98 +1,135 @@
-// document.addEventListener("DOMContentLoaded", function () {
-//     // Sélectionne tous les champs de quantité
-//     const quantites = document.querySelectorAll(".quantite");
+function updateTotal() {
+    let total = 0;
+    $('.montant-ttc').each(function() {
+        total += parseFloat($(this).text());
+    });
+    $('#net-a-payer strong').text(total.toFixed(2) + "€");
+}
 
-//     function calculerMontant() {
-//         let total = 0;
+// Mettre à jour le montant TTC lorsqu'on change la quantité
+$(document).on('input', '.quantite', function() {
+    const $row = $(this).closest('tr');
+    const quantite = parseInt($(this).val());
+    const price = parseFloat($(this).data('price'));
+    const montantTTC = quantite * price;
+    $row.find('.montant-ttc').text(montantTTC.toFixed(2));
+    updateTotal();
+});
 
-//         quantites.forEach(input => {
-//             const prixUnitaire = parseFloat(input.dataset.price); // Récupère le prix unitaire depuis data-price
-//             const quantite = parseInt(input.value) || 0; // Quantité saisie (0 si vide)
-//             const montantTTC = prixUnitaire * quantite; // Calcul du montant
+$(document).ready(function() {
+    const $addBtn = $("#add-product");
+    const $produitsListe = $("#produits-liste");
+    const $template = $("#template-produit");
+    const $netAPayerEl = $("#net-a-payer");
+        
+    // Ajouter un produit
+    $addBtn.on("click", function() {
+        const $clone = $template.clone();
+        $clone.removeClass("d-none").removeAttr("id");
+        $produitsListe.append($clone);
+        updateMontants();
+    });
 
-//             // Mettre à jour la colonne "Montant TTC"
-//             const montantCell = input.closest("tr").querySelector(".montant-ttc");
-//             montantCell.textContent = montantTTC.toFixed(2); // Affichage avec 2 décimales
+    // Supprimer un produit
+    $produitsListe.on("click", ".remove-btn", function() {
+        $(this).closest("tr").remove();
+        updateMontants();
+    });
 
-//             // Ajouter au total général
-//             total += montantTTC;
-//         });
+    // Recalcul automatique quand quantité ou prix change
+    $produitsListe.on("input", ".quantite, .prix", function() {
+        updateMontants();
+    });
 
-//         // Mettre à jour le "Net à payer"
-//         document.getElementById("net-a-payer").textContent = total.toFixed(2);
-//     }
+    const socket = new WebSocket("ws://127.0.0.1:8000/ws/socket-server/");
 
-//     // Ajoute un écouteur sur chaque input quantité
-//     quantites.forEach(input => {
-//         input.addEventListener("input", calculerMontant);
-//     });
+    socket.onopen = function(event) {
+        console.log("Connexion WebSocket établie !");
+    };
 
-//     // Exécuter une première fois pour initialiser le total
-//     calculerMontant();
-// });
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        console.log("je suis data et ceci ce sont mes données", data);
+
+        if (data.error) {
+            alert(data.error);
+        } else {
+            addProductToTable(data.product);
+        }
+    };
+
+    socket.onclose = function(event) {
+        console.log("Connexion Web3 Socket fermée.");
+    };
+
+    // Fonction pour ajouter un produit au tableau HTML
+    function addProductToTable(product) {
+        // Vérifier si le produit est déjà dans le tableau (évite les doublons)
+    if ($(`#product-${product.id}`).length) {
+
+        const $row = $(`#product-${product.id}`);
+
+        const $qteInput = $row.find(".quantite");
+
+        let qte = parseInt($qteInput.val()) || 0;
+
+        qte += 1;
+
+        $qteInput.val(qte);
+
+        const price = parseFloat($qteInput.attr("data-price"));
+
+        const montant = qte * price;
+
+        $row.find(".montant-ttc").text(montant.toFixed(2));
+
+        updateMontants(); // recalcul total général
+
+        console.log("Quantité incrémentée :", qte);
+
+        // 🎯 Effet visuel rapide
+        $row.addClass("table-success");
+        setTimeout(() => {
+            $row.removeClass("table-success");
+        }, 300);
 
 
-// const socket = new WebSocket("ws://127.0.0.1:8000/ws/socket-server/");
-
-// socket.onopen = function(event) {
-//     console.log("Connexion WebSocket établie !");
-// };
-
-// socket.onmessage = function(event) {
-//     const data = JSON.parse(event.data);
-//     console.log("Données reçues :", data);
-
-//     // Rafraîchir dynamiquement la liste des produits dans le tableau
-//     if (data.barcode) {
-//         fetch("/easyMarketProducts/caissier-index/")  // Appelle ta vue Django qui retourne la liste mise à jour
-//             .then(response => response.text())
-//             .then(html => {
-//                 document.getElementById("produits-liste").innerHTML = html;
-//             });
-//     }
-// };
-
-// socket.onclose = function(event) {
-//     console.log("Connexion WebSocket fermée.");
-// };
-const socket = new WebSocket("ws://127.0.0.1:8000/ws/socket-server/");
-
-socket.onopen = function(event) {
-    console.log("Connexion WebSocket établie !");
-};
-
-socket.onmessage = function(event) {
-    console.log("Données reçues :", data);
-    const data = JSON.parse(event.data);
-    console.log("je suis data et ceci ce sont mes données", data);
-
-    if (data.error) {
-        alert(data.error);
-    } else {
-        addProductToTable(data);
-    }
-};
-
-socket.onclose = function(event) {
-    console.log("Connexion WebSocket fermée.");
-};
-
-// Fonction pour ajouter un produit au tableau HTML
-function addProductToTable(product) {
-    const tableBody = document.getElementById("produits-liste");
-    
-    // Vérifier si le produit est déjà dans le tableau (évite les doublons)
-    if (document.getElementById(`product-${product.id}`)) {
         return;
     }
-    const newRow = document.createElement("tr");
-    newRow.id = `product-${product.id}`;
-    newRow.innerHTML = `
-        <th scope="row">${product.id}</th>
-        <td>${product.name}</td>
-        <td><input type="number" class="quantite" min="1" value="1" data-price="${product.price}"></td>
-        <td class="pu-ttc">${product.price.toFixed(2)}</td>
-        <td class="montant-ttc">${product.price.toFixed(2)}</td>
-    `;
-    tableBody.appendChild(newRow);
-}
+
+        const $produitsListe = $("#produits-liste");
+        const $template = $("#template-produit");
+        const $clone = $template.clone();
+        $clone
+        .removeClass("d-none")
+        .removeAttr("id")
+        .attr("id", `product-${product.id}`);
+
+        // Remplir les champs du template
+        $clone.find('input[name="ref[]"]').val(product.id);
+        $clone.find('input[name="designation[]"]').val(product.name);
+        $clone.find('.quantite').val(1).attr("data-price", product.price);
+        $clone.find('.montant-ttc').text(product.price.toFixed(2));
+
+        // Si tu as un champ prix dans le template
+        $clone.find('.prix').val(product.price);
+
+        $produitsListe.append($clone);
+
+        updateMontants();
+    }
+
+    function updateMontants() {
+        let total = 0;
+        $produitsListe.find("tr").not(".d-none").each(function() {
+            const $row = $(this);
+            const qte = parseFloat($row.find(".quantite").val()) || 0;
+            const prix = parseFloat($row.find(".prix").val()) || 0;
+            const montant = qte * prix;
+        
+            $row.find(".montant-ttc").text(montant.toFixed(2));
+            total += montant;
+        });
+        $netAPayerEl.text(total.toFixed(2));
+    }
+});
